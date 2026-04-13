@@ -7,6 +7,8 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -92,5 +94,13 @@ public final class CacheStorage {
 
     public static Path getConfigDir() {
         return CONFIG_DIR;
+    }
+
+    public static Path exportLearned(Map<String, CachedAction> entries) {
+        String timestamp = LocalDateTime.now()
+                .format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+        Path exportFile = CONFIG_DIR.resolve("export_" + timestamp + ".json");
+        saveToFile(exportFile, entries);
+        return exportFile;
     }
 }

@@ -28,5 +28,6 @@
   "tlmaicache.export.done": "Exported %d entries to %s",
   "tlmaicache.import.done": "Imported %d cache entries",
   "tlmaicache.import.not_found": "File not found: %s",
+  "tlmaicache.import.invalid_path": "Invalid file path (must be within config directory)",
   "tlmaicache.import.error": "Import failed: %s"
 }

@@ -25,6 +25,8 @@ public final class ChatInterceptor {
     private static final Map<UUID, PendingQuery> pendingQueries = new ConcurrentHashMap<>();
     // 确认 ID → 待确认信息
     private static final Map<UUID, PendingConfirmation> pendingConfirmations = new ConcurrentHashMap<>();
+    // 玩家 UUID → 待选择（reject 后选择正确操作）
+    private static final Map<UUID, PendingSelection> pendingSelections = new ConcurrentHashMap<>();
 
     private ChatInterceptor() {
     }
@@ -40,7 +42,12 @@ public final class ChatInterceptor {
         String actionDesc;
 
         if ("switch_maid_work_task".equals(functionName)) {
-            ResourceLocation taskId = new ResourceLocation(parameter);
+            ResourceLocation taskId = ResourceLocation.tryParse(parameter);
+            if (taskId == null) {
+                sender.sendSystemMessage(Component.translatable("tlmaicache.error.unknown_task", parameter)
+                        .withStyle(ChatFormatting.RED));
+                return false;
+            }
             Optional<IMaidTask> taskOpt = TaskManager.findTask(taskId);
             if (taskOpt.isPresent()) {
                 IMaidTask task = taskOpt.get();
@@ -167,6 +174,9 @@ public final class ChatInterceptor {
         if (confirmation == null) return false;
         if (!confirmation.playerUUID.equals(player.getUUID())) return false;
 
+        pendingSelections.put(player.getUUID(), new PendingSelection(
+                confirmation.normalizedText, confirmation.originalMessage, System.currentTimeMillis()));
+
         // 发送可选操作列表
         ConfirmationMessage.sendTaskList(player, confirmation.normalizedText, confirmation.originalMessage);
         return true;
@@ -175,12 +185,19 @@ public final class ChatInterceptor {
     /**
      * 玩家手动选择正确操作
      */
-    public static void selectAction(ServerPlayer player, String normalizedText, String originalMessage,
+    public static boolean selectAction(ServerPlayer player, String normalizedText, String originalMessage,
                                     String toolName, String parameter) {
+        PendingSelection pending = pendingSelections.remove(player.getUUID());
+        if (pending == null || System.currentTimeMillis() - pending.timestamp > 30_000) {
+            player.sendSystemMessage(Component.translatable("tlmaicache.confirm.expired")
+                    .withStyle(ChatFormatting.GRAY));
+            return false;
+        }
+
         if (CacheConfig.OP_ONLY_CONFIRM.get() && !player.hasPermissions(2)) {
             player.sendSystemMessage(Component.translatable("tlmaicache.error.op_only")
                     .withStyle(ChatFormatting.RED));
-            return;
+            return false;
         }
 
         ActionCache.getInstance().put(normalizedText,
@@ -189,11 +206,13 @@ public final class ChatInterceptor {
         player.sendSystemMessage(Component.translatable("tlmaicache.confirm.saved",
                         normalizedText, formatActionDescription(toolName, parameter))
                 .withStyle(ChatFormatting.GREEN));
+        return true;
     }
 
     public static void clearPending() {
         pendingQueries.clear();
         pendingConfirmations.clear();
+        pendingSelections.clear();
     }
 
     /**
@@ -203,6 +222,7 @@ public final class ChatInterceptor {
         long now = System.currentTimeMillis();
         pendingQueries.entrySet().removeIf(e -> now - e.getValue().timestamp > 30_000);
         pendingConfirmations.entrySet().removeIf(e -> now - e.getValue().timestamp > 30_000);
+        pendingSelections.entrySet().removeIf(e -> now - e.getValue().timestamp > 30_000);
     }
 
     public static String formatActionDescription(String toolName, String parameter) {
@@ -221,5 +241,8 @@ public final class ChatInterceptor {
 
     public record PendingConfirmation(UUID maidUUID, String normalizedText, String originalMessage,
                                       String toolName, String parameter, UUID playerUUID, long timestamp) {
+    }
+
+    public record PendingSelection(String normalizedText, String originalMessage, long timestamp) {
     }
 }

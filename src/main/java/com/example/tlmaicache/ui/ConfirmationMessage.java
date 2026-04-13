@@ -70,7 +70,11 @@ public final class ConfirmationMessage {
         MutableComponent taskLine = Component.empty();
         int count = 0;
         for (IMaidTask task : TaskManager.getTaskIndex()) {
-            if (task.isHidden(null)) continue;
+            try {
+                if (task.isHidden(null)) continue;
+            } catch (Exception e) {
+                continue;
+            }
             String taskId = task.getUid().toString();
             String taskName = task.getUid().getPath();
 

@@ -15,6 +15,9 @@ import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 
 public final class CacheCommands {
@@ -171,23 +174,28 @@ public final class CacheCommands {
                     .withStyle(ChatFormatting.YELLOW), false);
             return 0;
         }
-        // saveLearned 已经保存到 learned.json
-        ActionCache.getInstance().saveLearned();
+        Path exportPath = CacheStorage.exportLearned(learned);
+        final int count = learned.size();
         ctx.getSource().sendSuccess(() -> Component.translatable("tlmaicache.export.done",
-                CacheStorage.getLearnedPath().toAbsolutePath().toString(), learned.size())
+                count, exportPath.toAbsolutePath().toString())
                 .withStyle(ChatFormatting.GREEN), false);
-        return learned.size();
+        return count;
     }
 
     private static int importCache(CommandContext<CommandSourceStack> ctx) {
         String file = StringArgumentType.getString(ctx, "file");
-        java.nio.file.Path path = CacheStorage.getConfigDir().resolve(file);
-        if (!java.nio.file.Files.exists(path)) {
+        Path configDir = CacheStorage.getConfigDir().normalize();
+        Path path = configDir.resolve(file).normalize();
+        if (!path.startsWith(configDir)) {
+            ctx.getSource().sendFailure(Component.translatable("tlmaicache.import.invalid_path"));
+            return 0;
+        }
+        if (!Files.exists(path)) {
             ctx.getSource().sendFailure(Component.translatable("tlmaicache.import.not_found", file));
             return 0;
         }
 
-        try (java.io.Reader reader = java.nio.file.Files.newBufferedReader(path, java.nio.charset.StandardCharsets.UTF_8)) {
+        try (java.io.Reader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
             com.google.gson.JsonObject root = new com.google.gson.Gson().fromJson(reader, com.google.gson.JsonObject.class);
             int count = 0;
             for (var entry : root.entrySet()) {
@@ -252,8 +260,7 @@ public final class CacheCommands {
         try {
             String normalized = ConfirmationMessage.decode(normalizedB64);
             String original = ConfirmationMessage.decode(originalB64);
-            ChatInterceptor.selectAction(player, normalized, original, toolName, parameter);
-            return 1;
+            return ChatInterceptor.selectAction(player, normalized, original, toolName, parameter) ? 1 : 0;
         } catch (Exception e) {
             return 0;
         }

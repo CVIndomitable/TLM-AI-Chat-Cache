@@ -4,6 +4,10 @@ import com.example.tlmaicache.TlmAiCache;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ActionCache {
@@ -13,6 +17,12 @@ public class ActionCache {
     private final Map<String, CachedAction> learnedOnly = new ConcurrentHashMap<>();
     private final AtomicInteger hits = new AtomicInteger(0);
     private final AtomicInteger misses = new AtomicInteger(0);
+    private final ScheduledExecutorService saveExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "tlmcache-save");
+        t.setDaemon(true);
+        return t;
+    });
+    private volatile ScheduledFuture<?> pendingSave;
 
     private ActionCache() {
     }
@@ -72,6 +82,8 @@ public class ActionCache {
     public void clearLearned() {
         learnedOnly.keySet().forEach(cache::remove);
         learnedOnly.clear();
+        Map<String, CachedAction> builtins = CacheStorage.loadBuiltin();
+        cache.putAll(builtins);
         saveLearnedAsync();
     }
 
@@ -80,9 +92,9 @@ public class ActionCache {
     }
 
     private void saveLearnedAsync() {
-        Thread t = new Thread(this::saveLearned, "tlmcache-save");
-        t.setDaemon(true);
-        t.start();
+        ScheduledFuture<?> prev = pendingSave;
+        if (prev != null) prev.cancel(false);
+        pendingSave = saveExecutor.schedule(this::saveLearned, 2, TimeUnit.SECONDS);
     }
 
     public int size() {
@@ -113,5 +125,12 @@ public class ActionCache {
         hits.set(0);
         misses.set(0);
         load();
+    }
+
+    public void shutdown() {
+        ScheduledFuture<?> prev = pendingSave;
+        if (prev != null) prev.cancel(false);
+        saveLearned();
+        saveExecutor.shutdownNow();
     }
 }

@@ -28,5 +28,6 @@
   "tlmaicache.export.done": "已导出 %d 条至 %s",
   "tlmaicache.import.done": "已导入 %d 条缓存",
   "tlmaicache.import.not_found": "文件不存在：%s",
+  "tlmaicache.import.invalid_path": "无效的文件路径（必须在配置目录内）",
   "tlmaicache.import.error": "导入失败：%s"
 }

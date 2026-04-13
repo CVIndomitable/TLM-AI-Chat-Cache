@@ -1,5 +1,6 @@
 package com.example.tlmaicache.mixin;
 
+import com.example.tlmaicache.TlmAiCache;
 import com.example.tlmaicache.cache.ActionCache;
 import com.example.tlmaicache.cache.CachedAction;
 import com.example.tlmaicache.config.CacheConfig;
@@ -21,7 +22,11 @@ public abstract class MaidAIChatManagerMixin {
     private void tlmcache$onChat(String message, ChatClientInfo clientInfo, ServerPlayer sender, CallbackInfo ci) {
         if (!CacheConfig.ENABLE_CACHE.get()) return;
 
-        EntityMaid maid = ((MaidAIChatDataAccessor) this).tlmcache$getMaid();
+        if (!(this instanceof MaidAIChatDataAccessor accessor)) {
+            TlmAiCache.LOGGER.error("MaidAIChatManager does not extend MaidAIChatData - cache disabled for this call");
+            return;
+        }
+        EntityMaid maid = accessor.tlmcache$getMaid();
 
         String normalized = TextNormalizer.normalize(message);
         if (normalized.isEmpty()) return;

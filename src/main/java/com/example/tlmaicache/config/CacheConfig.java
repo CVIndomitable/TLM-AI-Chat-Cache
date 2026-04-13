@@ -7,7 +7,6 @@ public class CacheConfig {
 
     public static final ForgeConfigSpec.BooleanValue ENABLE_CACHE;
     public static final ForgeConfigSpec.BooleanValue REQUIRE_CONFIRMATION;
-    public static final ForgeConfigSpec.BooleanValue SHARED_CACHE;
     public static final ForgeConfigSpec.BooleanValue OP_ONLY_CONFIRM;
     public static final ForgeConfigSpec.ConfigValue<String> EXTRA_CN_STOPWORDS;
     public static final ForgeConfigSpec.ConfigValue<String> EXTRA_EN_STOPWORDS;
@@ -23,9 +22,6 @@ public class CacheConfig {
         REQUIRE_CONFIRMATION = builder
                 .comment("Require player confirmation before caching new LLM mappings")
                 .define("require_confirmation", true);
-        SHARED_CACHE = builder
-                .comment("Share learned cache across all players on the server")
-                .define("shared_cache", true);
         OP_ONLY_CONFIRM = builder
                 .comment("Only OP players can confirm new cache mappings")
                 .define("op_only_confirm", false);
