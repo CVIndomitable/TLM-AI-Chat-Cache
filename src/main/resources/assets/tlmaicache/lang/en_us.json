@@ -1,19 +1,8 @@
 {
-  "tlmaicache.bubble.ok": "OK, %s!",
   "tlmaicache.debug.cache_hit": "Cache hit → %s",
-  "tlmaicache.debug.cache_miss": "Cache miss, forwarding to LLM",
-  "tlmaicache.confirm.understood": "I understood as [%s]",
-  "tlmaicache.confirm.yes": "Confirm",
-  "tlmaicache.confirm.no": "Wrong",
-  "tlmaicache.confirm.yes.tooltip": "Confirm and cache this mapping",
-  "tlmaicache.confirm.no.tooltip": "Not correct, choose the right action",
-  "tlmaicache.confirm.saved": "Cached: \"%s\" → %s",
-  "tlmaicache.confirm.expired": "Confirmation expired or invalid",
+  "tlmaicache.debug.cache_miss": "Cache miss",
+  "tlmaicache.debug.no_maid": "No owned maid nearby",
   "tlmaicache.error.unknown_task": "Unknown task ID: %s",
-  "tlmaicache.error.op_only": "Only operators can confirm new cache mappings",
-  "tlmaicache.select.title": "Select the correct action:",
-  "tlmaicache.action.follow": "Follow owner",
-  "tlmaicache.action.stay": "Stay here",
   "tlmaicache.list.empty": "Cache is empty",
   "tlmaicache.list.header": "=== Cache List (Page %d/%d, %d entries) ===",
   "tlmaicache.clear.done": "Cleared %d learned cache entries",
@@ -29,5 +18,7 @@
   "tlmaicache.import.done": "Imported %d cache entries",
   "tlmaicache.import.not_found": "File not found: %s",
   "tlmaicache.import.invalid_path": "Invalid file path (must be within config directory)",
-  "tlmaicache.import.error": "Import failed: %s"
+  "tlmaicache.import.error": "Import failed: %s",
+  "tlmaicache.add.done": "Added mapping: \"%s\" → %s",
+  "tlmaicache.add.empty_key": "Normalized key is empty, cannot add"
 }

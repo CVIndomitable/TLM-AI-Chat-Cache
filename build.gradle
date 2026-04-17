@@ -2,20 +2,17 @@ buildscript {
     repositories {
         maven { url = 'https://maven.minecraftforge.net' }
         maven { url = 'https://maven.parchmentmc.org' }
-        maven { url = 'https://repo.spongepowered.org/repository/maven-public/' }
         mavenCentral()
         gradlePluginPortal()
     }
     dependencies {
-        classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '[6.0.16,6.2)', changing: true
+        classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '5.1.+', changing: true
         classpath 'org.parchmentmc:librarian:1.+'
-        classpath group: 'org.spongepowered', name: 'mixingradle', version: '0.7-SNAPSHOT'
     }
 }
 
 apply plugin: 'net.minecraftforge.gradle'
 apply plugin: 'org.parchmentmc.librarian.forgegradle'
-apply plugin: 'org.spongepowered.mixin'
 apply plugin: 'java'
 
 version = mod_version
@@ -25,36 +22,30 @@ archivesBaseName = 'tlm-ai-cache'
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 
 minecraft {
-    mappings channel: 'parchment', version: '2023.08.20-1.20.1'
+    mappings channel: 'parchment', version: '2022.11.06-1.18.2'
     runs {
-        configureEach {
-            jvmArgs = [
-                    "-XX:+IgnoreUnrecognizedVMOptions",
-                    "-XX:+AllowEnhancedClassRedefinition"
-            ]
+        client {
+            workingDirectory project.file('run/client')
             property 'forge.logging.markers', 'REGISTRIES'
             property 'forge.logging.console.level', 'debug'
-            property 'mixin.env.remapRefMap', 'true'
-            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
+            property 'fml.earlyprogresswindow', 'false'
             mods {
                 tlmaicache {
                     source sourceSets.main
                 }
             }
         }
-        client {
-            workingDirectory project.file('run/client')
-            property 'fml.earlyprogresswindow', 'false'
-        }
         server {
             workingDirectory project.file('run/server')
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+            mods {
+                tlmaicache {
+                    source sourceSets.main
+                }
+            }
         }
     }
-}
-
-mixin {
-    add sourceSets.main, "tlm-ai-cache.refmap.json"
-    config "tlm-ai-cache.mixins.json"
 }
 
 repositories {
@@ -67,7 +58,6 @@ dependencies {
     minecraft "net.minecraftforge:forge:${forge_version}"
     // 将 TLM 的 JAR 放入 libs/ 目录
     implementation fg.deobf("libs:touhoulittlemaid:${tlm_version}")
-    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
 }
 
 tasks.withType(JavaCompile).configureEach {

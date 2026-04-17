@@ -1,5 +1,5 @@
 modLoader = "javafml"
-loaderVersion = "[47,)"
+loaderVersion = "[40,)"
 license = "MIT"
 
 [[mods]]
@@ -7,31 +7,29 @@ modId = "tlmaicache"
 version = "${file.jarVersion}"
 displayName = "TLM AI Chat Cache"
 description = '''
-Cache layer for Touhou Little Maid's AI chat system.
-Maps player natural language to game operations locally,
-reducing LLM API calls with zero-latency cached responses.
+Pure-local keyword dispatcher for Touhou Little Maid on MC 1.18.2.
+Since TLM 1.18.2 has no LLM function calling, this mod listens to
+player chat and directly switches nearby maids' tasks via keywords,
+with no network/API calls at all.
 '''
 
 [[dependencies.tlmaicache]]
 modId = "forge"
 mandatory = true
-versionRange = "[47,)"
+versionRange = "[40,)"
 ordering = "NONE"
 side = "BOTH"
 
 [[dependencies.tlmaicache]]
 modId = "minecraft"
 mandatory = true
-versionRange = "[1.20.1,1.21)"
+versionRange = "[1.18.2,1.19)"
 ordering = "NONE"
 side = "BOTH"
 
 [[dependencies.tlmaicache]]
 modId = "touhou_little_maid"
 mandatory = true
-versionRange = "[1.5.0,)"
+versionRange = "[1.2.2,)"
 ordering = "AFTER"
 side = "BOTH"
-
-[[mixins]]
-config = "tlm-ai-cache.mixins.json"

@@ -2,6 +2,7 @@ build/
 .gradle/
 run/
 libs/
+样本/
 *.iml
 .idea/
 out/

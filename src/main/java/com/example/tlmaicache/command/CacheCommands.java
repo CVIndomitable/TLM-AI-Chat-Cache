@@ -3,8 +3,8 @@ package com.example.tlmaicache.command;
 import com.example.tlmaicache.cache.ActionCache;
 import com.example.tlmaicache.cache.CachedAction;
 import com.example.tlmaicache.cache.CacheStorage;
-import com.example.tlmaicache.intercept.ChatInterceptor;
-import com.example.tlmaicache.ui.ConfirmationMessage;
+import com.example.tlmaicache.intercept.ChatKeywordHandler;
+import com.example.tlmaicache.normalizer.TextNormalizer;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -13,12 +13,17 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.network.chat.TextComponent;
+import net.minecraft.network.chat.TranslatableComponent;
+import net.minecraft.resources.ResourceLocation;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 
 public final class CacheCommands {
 
@@ -52,26 +57,26 @@ public final class CacheCommands {
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.argument("file", StringArgumentType.greedyString())
                                 .executes(CacheCommands::importCache)))
-                // 内部命令（用于聊天确认 UI）
-                .then(Commands.literal("confirm")
-                        .then(Commands.argument("id", StringArgumentType.string())
-                                .executes(CacheCommands::confirmAction)))
-                .then(Commands.literal("reject")
-                        .then(Commands.argument("id", StringArgumentType.string())
-                                .executes(CacheCommands::rejectAction)))
-                .then(Commands.literal("select")
-                        .then(Commands.argument("normalizedB64", StringArgumentType.string())
-                                .then(Commands.argument("originalB64", StringArgumentType.string())
-                                        .then(Commands.argument("toolName", StringArgumentType.string())
-                                                .then(Commands.argument("parameter", StringArgumentType.greedyString())
-                                                        .executes(CacheCommands::selectAction))))))
+                .then(Commands.literal("add")
+                        .requires(src -> src.hasPermission(2))
+                        .then(Commands.literal("task")
+                                .then(Commands.argument("taskId", StringArgumentType.string())
+                                        .then(Commands.argument("phrase", StringArgumentType.greedyString())
+                                                .executes(CacheCommands::addTaskMapping))))
+                        .then(Commands.literal("follow")
+                                .then(Commands.argument("phrase", StringArgumentType.greedyString())
+                                        .executes(ctx -> addFollowMapping(ctx, true))))
+                        .then(Commands.literal("stay")
+                                .then(Commands.argument("phrase", StringArgumentType.greedyString())
+                                        .executes(ctx -> addFollowMapping(ctx, false)))))
         );
     }
 
     private static int listEntries(CommandContext<CommandSourceStack> ctx, int page) {
         Map<String, CachedAction> entries = ActionCache.getInstance().getAllEntries();
+        CommandSourceStack src = ctx.getSource();
         if (entries.isEmpty()) {
-            ctx.getSource().sendSuccess(() -> Component.translatable("tlmaicache.list.empty")
+            src.sendSuccess(new TranslatableComponent("tlmaicache.list.empty")
                     .withStyle(ChatFormatting.YELLOW), false);
             return 0;
         }
@@ -84,19 +89,18 @@ public final class CacheCommands {
         int start = (page - 1) * PAGE_SIZE;
         int end = Math.min(start + PAGE_SIZE, sorted.size());
 
-        final int finalPage = page;
-        ctx.getSource().sendSuccess(() -> Component.translatable("tlmaicache.list.header",
-                finalPage, totalPages, sorted.size()).withStyle(ChatFormatting.GOLD), false);
+        src.sendSuccess(new TranslatableComponent("tlmaicache.list.header",
+                page, totalPages, sorted.size()).withStyle(ChatFormatting.GOLD), false);
 
         for (int i = start; i < end; i++) {
             Map.Entry<String, CachedAction> entry = sorted.get(i);
             CachedAction action = entry.getValue();
-            String desc = ChatInterceptor.formatActionDescription(action.getFunctionName(), action.getParameter());
-            ctx.getSource().sendSuccess(() -> Component.literal("  ")
-                    .append(Component.literal(entry.getKey()).withStyle(ChatFormatting.AQUA))
-                    .append(Component.literal(" → ").withStyle(ChatFormatting.GRAY))
-                    .append(Component.literal(desc).withStyle(ChatFormatting.WHITE))
-                    .append(Component.literal(" (×" + action.getHitCount() + ")").withStyle(ChatFormatting.DARK_GRAY)), false);
+            String desc = ChatKeywordHandler.describe(action);
+            src.sendSuccess(new TextComponent("  ")
+                    .append(new TextComponent(entry.getKey()).withStyle(ChatFormatting.AQUA))
+                    .append(new TextComponent(" → ").withStyle(ChatFormatting.GRAY))
+                    .append(new TextComponent(desc).withStyle(ChatFormatting.WHITE))
+                    .append(new TextComponent(" (×" + action.getHitCount() + ")").withStyle(ChatFormatting.DARK_GRAY)), false);
         }
 
         return sorted.size();
@@ -105,7 +109,7 @@ public final class CacheCommands {
     private static int clearLearned(CommandContext<CommandSourceStack> ctx) {
         int count = ActionCache.getInstance().learnedSize();
         ActionCache.getInstance().clearLearned();
-        ctx.getSource().sendSuccess(() -> Component.translatable("tlmaicache.clear.done", count)
+        ctx.getSource().sendSuccess(new TranslatableComponent("tlmaicache.clear.done", count)
                 .withStyle(ChatFormatting.GREEN), true);
         return count;
     }
@@ -114,17 +118,17 @@ public final class CacheCommands {
         String key = StringArgumentType.getString(ctx, "key");
         boolean removed = ActionCache.getInstance().remove(key);
         if (removed) {
-            ctx.getSource().sendSuccess(() -> Component.translatable("tlmaicache.remove.done", key)
+            ctx.getSource().sendSuccess(new TranslatableComponent("tlmaicache.remove.done", key)
                     .withStyle(ChatFormatting.GREEN), true);
         } else {
-            ctx.getSource().sendFailure(Component.translatable("tlmaicache.remove.not_found", key));
+            ctx.getSource().sendFailure(new TranslatableComponent("tlmaicache.remove.not_found", key));
         }
         return removed ? 1 : 0;
     }
 
     private static int reload(CommandContext<CommandSourceStack> ctx) {
         ActionCache.getInstance().reload();
-        ctx.getSource().sendSuccess(() -> Component.translatable("tlmaicache.reload.done",
+        ctx.getSource().sendSuccess(new TranslatableComponent("tlmaicache.reload.done",
                 ActionCache.getInstance().size()).withStyle(ChatFormatting.GREEN), true);
         return 1;
     }
@@ -139,27 +143,27 @@ public final class CacheCommands {
         int totalQueries = hits + misses;
         double hitRate = totalQueries > 0 ? (hits * 100.0 / totalQueries) : 0;
 
-        ctx.getSource().sendSuccess(() -> Component.translatable("tlmaicache.stats.header")
+        CommandSourceStack src = ctx.getSource();
+        src.sendSuccess(new TranslatableComponent("tlmaicache.stats.header")
                 .withStyle(ChatFormatting.GOLD), false);
-        ctx.getSource().sendSuccess(() -> Component.translatable("tlmaicache.stats.total", total, builtin, learned)
+        src.sendSuccess(new TranslatableComponent("tlmaicache.stats.total", total, builtin, learned)
                 .withStyle(ChatFormatting.WHITE), false);
-        ctx.getSource().sendSuccess(() -> Component.translatable("tlmaicache.stats.hits", hits, misses,
+        src.sendSuccess(new TranslatableComponent("tlmaicache.stats.hits", hits, misses,
                 String.format("%.1f%%", hitRate)).withStyle(ChatFormatting.WHITE), false);
 
-        // 最常用的映射
         List<Map.Entry<String, CachedAction>> top = cache.getAllEntries().entrySet().stream()
                 .sorted(Comparator.comparingInt((Map.Entry<String, CachedAction> e) -> e.getValue().getHitCount()).reversed())
                 .limit(5)
                 .toList();
 
-        if (!top.isEmpty()) {
-            ctx.getSource().sendSuccess(() -> Component.translatable("tlmaicache.stats.top")
+        if (!top.isEmpty() && top.get(0).getValue().getHitCount() > 0) {
+            src.sendSuccess(new TranslatableComponent("tlmaicache.stats.top")
                     .withStyle(ChatFormatting.GOLD), false);
             for (Map.Entry<String, CachedAction> entry : top) {
                 CachedAction action = entry.getValue();
                 if (action.getHitCount() == 0) continue;
-                String desc = ChatInterceptor.formatActionDescription(action.getFunctionName(), action.getParameter());
-                ctx.getSource().sendSuccess(() -> Component.literal("  " + entry.getKey() + " → " + desc
+                String desc = ChatKeywordHandler.describe(action);
+                src.sendSuccess(new TextComponent("  " + entry.getKey() + " → " + desc
                         + " (×" + action.getHitCount() + ")").withStyle(ChatFormatting.WHITE), false);
             }
         }
@@ -170,16 +174,15 @@ public final class CacheCommands {
     private static int exportCache(CommandContext<CommandSourceStack> ctx) {
         Map<String, CachedAction> learned = ActionCache.getInstance().getLearnedEntries();
         if (learned.isEmpty()) {
-            ctx.getSource().sendSuccess(() -> Component.translatable("tlmaicache.export.empty")
+            ctx.getSource().sendSuccess(new TranslatableComponent("tlmaicache.export.empty")
                     .withStyle(ChatFormatting.YELLOW), false);
             return 0;
         }
         Path exportPath = CacheStorage.exportLearned(learned);
-        final int count = learned.size();
-        ctx.getSource().sendSuccess(() -> Component.translatable("tlmaicache.export.done",
-                count, exportPath.toAbsolutePath().toString())
+        ctx.getSource().sendSuccess(new TranslatableComponent("tlmaicache.export.done",
+                learned.size(), exportPath.toAbsolutePath().toString())
                 .withStyle(ChatFormatting.GREEN), false);
-        return count;
+        return learned.size();
     }
 
     private static int importCache(CommandContext<CommandSourceStack> ctx) {
@@ -187,11 +190,11 @@ public final class CacheCommands {
         Path configDir = CacheStorage.getConfigDir().normalize();
         Path path = configDir.resolve(file).normalize();
         if (!path.startsWith(configDir)) {
-            ctx.getSource().sendFailure(Component.translatable("tlmaicache.import.invalid_path"));
+            ctx.getSource().sendFailure(new TranslatableComponent("tlmaicache.import.invalid_path"));
             return 0;
         }
         if (!Files.exists(path)) {
-            ctx.getSource().sendFailure(Component.translatable("tlmaicache.import.not_found", file));
+            ctx.getSource().sendFailure(new TranslatableComponent("tlmaicache.import.not_found", file));
             return 0;
         }
 
@@ -206,63 +209,52 @@ public final class CacheCommands {
                 } catch (Exception ignored) {
                 }
             }
-            final int finalCount = count;
-            ctx.getSource().sendSuccess(() -> Component.translatable("tlmaicache.import.done", finalCount)
+            ctx.getSource().sendSuccess(new TranslatableComponent("tlmaicache.import.done", count)
                     .withStyle(ChatFormatting.GREEN), true);
             return count;
         } catch (Exception e) {
-            ctx.getSource().sendFailure(Component.translatable("tlmaicache.import.error", e.getMessage()));
+            ctx.getSource().sendFailure(new TranslatableComponent("tlmaicache.import.error", e.getMessage()));
             return 0;
         }
     }
 
-    // ===== 内部确认命令 =====
+    private static int addTaskMapping(CommandContext<CommandSourceStack> ctx) {
+        String taskId = StringArgumentType.getString(ctx, "taskId");
+        String phrase = StringArgumentType.getString(ctx, "phrase");
 
-    private static int confirmAction(CommandContext<CommandSourceStack> ctx) {
-        if (!(ctx.getSource().getEntity() instanceof ServerPlayer player)) return 0;
-        String idStr = StringArgumentType.getString(ctx, "id");
-        try {
-            UUID confirmId = UUID.fromString(idStr);
-            boolean ok = ChatInterceptor.confirmMapping(confirmId, player);
-            if (!ok) {
-                player.sendSystemMessage(Component.translatable("tlmaicache.confirm.expired")
-                        .withStyle(ChatFormatting.GRAY));
-            }
-            return ok ? 1 : 0;
-        } catch (IllegalArgumentException e) {
+        String param = taskId.contains(":") ? taskId : "touhou_little_maid:" + taskId;
+        if (ResourceLocation.tryParse(param) == null) {
+            ctx.getSource().sendFailure(new TranslatableComponent("tlmaicache.error.unknown_task", taskId));
             return 0;
         }
+
+        String key = TextNormalizer.normalize(phrase);
+        if (key.isEmpty()) {
+            ctx.getSource().sendFailure(new TranslatableComponent("tlmaicache.add.empty_key"));
+            return 0;
+        }
+
+        ActionCache.getInstance().put(key, new CachedAction(
+                ChatKeywordHandler.FUNC_SWITCH_TASK, param, phrase));
+        ctx.getSource().sendSuccess(new TranslatableComponent("tlmaicache.add.done", key,
+                ChatKeywordHandler.describe(ChatKeywordHandler.FUNC_SWITCH_TASK, param))
+                .withStyle(ChatFormatting.GREEN), true);
+        return 1;
     }
 
-    private static int rejectAction(CommandContext<CommandSourceStack> ctx) {
-        if (!(ctx.getSource().getEntity() instanceof ServerPlayer player)) return 0;
-        String idStr = StringArgumentType.getString(ctx, "id");
-        try {
-            UUID confirmId = UUID.fromString(idStr);
-            boolean ok = ChatInterceptor.rejectMapping(confirmId, player);
-            if (!ok) {
-                player.sendSystemMessage(Component.translatable("tlmaicache.confirm.expired")
-                        .withStyle(ChatFormatting.GRAY));
-            }
-            return ok ? 1 : 0;
-        } catch (IllegalArgumentException e) {
+    private static int addFollowMapping(CommandContext<CommandSourceStack> ctx, boolean follow) {
+        String phrase = StringArgumentType.getString(ctx, "phrase");
+        String key = TextNormalizer.normalize(phrase);
+        if (key.isEmpty()) {
+            ctx.getSource().sendFailure(new TranslatableComponent("tlmaicache.add.empty_key"));
             return 0;
         }
-    }
-
-    private static int selectAction(CommandContext<CommandSourceStack> ctx) {
-        if (!(ctx.getSource().getEntity() instanceof ServerPlayer player)) return 0;
-        String normalizedB64 = StringArgumentType.getString(ctx, "normalizedB64");
-        String originalB64 = StringArgumentType.getString(ctx, "originalB64");
-        String toolName = StringArgumentType.getString(ctx, "toolName");
-        String parameter = StringArgumentType.getString(ctx, "parameter");
-
-        try {
-            String normalized = ConfirmationMessage.decode(normalizedB64);
-            String original = ConfirmationMessage.decode(originalB64);
-            return ChatInterceptor.selectAction(player, normalized, original, toolName, parameter) ? 1 : 0;
-        } catch (Exception e) {
-            return 0;
-        }
+        String param = Boolean.toString(follow);
+        ActionCache.getInstance().put(key, new CachedAction(
+                ChatKeywordHandler.FUNC_SWITCH_FOLLOW, param, phrase));
+        ctx.getSource().sendSuccess(new TranslatableComponent("tlmaicache.add.done", key,
+                ChatKeywordHandler.describe(ChatKeywordHandler.FUNC_SWITCH_FOLLOW, param))
+                .withStyle(ChatFormatting.GREEN), true);
+        return 1;
     }
 }

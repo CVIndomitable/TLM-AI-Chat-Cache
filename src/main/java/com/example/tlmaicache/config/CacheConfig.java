@@ -6,8 +6,6 @@ public class CacheConfig {
     public static final ForgeConfigSpec SPEC;
 
     public static final ForgeConfigSpec.BooleanValue ENABLE_CACHE;
-    public static final ForgeConfigSpec.BooleanValue REQUIRE_CONFIRMATION;
-    public static final ForgeConfigSpec.BooleanValue OP_ONLY_CONFIRM;
     public static final ForgeConfigSpec.ConfigValue<String> EXTRA_CN_STOPWORDS;
     public static final ForgeConfigSpec.ConfigValue<String> EXTRA_EN_STOPWORDS;
     public static final ForgeConfigSpec.BooleanValue SHOW_CACHE_DEBUG;
@@ -17,14 +15,8 @@ public class CacheConfig {
 
         builder.push("general");
         ENABLE_CACHE = builder
-                .comment("Enable the AI chat cache system")
+                .comment("Enable keyword → task dispatch on player chat")
                 .define("enable_cache", true);
-        REQUIRE_CONFIRMATION = builder
-                .comment("Require player confirmation before caching new LLM mappings")
-                .define("require_confirmation", true);
-        OP_ONLY_CONFIRM = builder
-                .comment("Only OP players can confirm new cache mappings")
-                .define("op_only_confirm", false);
         builder.pop();
 
         builder.push("normalization");

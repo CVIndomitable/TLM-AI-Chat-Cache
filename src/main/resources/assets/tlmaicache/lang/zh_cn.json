@@ -1,19 +1,8 @@
 {
-  "tlmaicache.bubble.ok": "好的，%s！",
   "tlmaicache.debug.cache_hit": "缓存命中 → %s",
-  "tlmaicache.debug.cache_miss": "缓存未命中，转发给 LLM",
-  "tlmaicache.confirm.understood": "我理解为【%s】",
-  "tlmaicache.confirm.yes": "确认",
-  "tlmaicache.confirm.no": "不对",
-  "tlmaicache.confirm.yes.tooltip": "确认此操作并缓存，下次直接执行",
-  "tlmaicache.confirm.no.tooltip": "操作不正确，选择正确的操作",
-  "tlmaicache.confirm.saved": "已缓存：\"%s\" → %s",
-  "tlmaicache.confirm.expired": "确认已过期或无效",
+  "tlmaicache.debug.cache_miss": "缓存未命中",
+  "tlmaicache.debug.no_maid": "附近没有你的女仆",
   "tlmaicache.error.unknown_task": "未知的任务 ID：%s",
-  "tlmaicache.error.op_only": "只有管理员才能确认新的缓存映射",
-  "tlmaicache.select.title": "请选择正确的操作：",
-  "tlmaicache.action.follow": "跟随主人",
-  "tlmaicache.action.stay": "原地待命",
   "tlmaicache.list.empty": "缓存为空",
   "tlmaicache.list.header": "=== 缓存列表 (第 %d/%d 页, 共 %d 条) ===",
   "tlmaicache.clear.done": "已清空 %d 条学习缓存",
@@ -29,5 +18,7 @@
   "tlmaicache.import.done": "已导入 %d 条缓存",
   "tlmaicache.import.not_found": "文件不存在：%s",
   "tlmaicache.import.invalid_path": "无效的文件路径（必须在配置目录内）",
-  "tlmaicache.import.error": "导入失败：%s"
+  "tlmaicache.import.error": "导入失败：%s",
+  "tlmaicache.add.done": "已添加映射：\"%s\" → %s",
+  "tlmaicache.add.empty_key": "归一化后关键词为空，无法添加"
 }
