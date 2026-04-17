@@ -3,15 +3,16 @@ package com.example.tlmaicache;
 import com.example.tlmaicache.cache.ActionCache;
 import com.example.tlmaicache.command.CacheCommands;
 import com.example.tlmaicache.intercept.ChatInterceptor;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.RegisterCommandsEvent;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.server.ServerStartingEvent;
-import net.minecraftforge.event.server.ServerStoppingEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.ModLoadingContext;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.config.ModConfig;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.config.ModConfig;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import net.neoforged.neoforge.event.server.ServerStartingEvent;
+import net.neoforged.neoforge.event.server.ServerStoppingEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -22,9 +23,9 @@ public class TlmAiCache {
 
     private int tickCounter = 0;
 
-    public TlmAiCache() {
-        MinecraftForge.EVENT_BUS.register(this);
-        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON,
+    public TlmAiCache(IEventBus modEventBus, ModContainer modContainer) {
+        NeoForge.EVENT_BUS.register(this);
+        modContainer.registerConfig(ModConfig.Type.COMMON,
                 com.example.tlmaicache.config.CacheConfig.SPEC);
     }
 
@@ -41,13 +42,11 @@ public class TlmAiCache {
     }
 
     @SubscribeEvent
-    public void onServerTick(TickEvent.ServerTickEvent event) {
-        if (event.phase == TickEvent.Phase.END) {
-            tickCounter++;
-            if (tickCounter >= 600) {
-                tickCounter = 0;
-                ChatInterceptor.cleanupExpired();
-            }
+    public void onServerTick(ServerTickEvent.Post event) {
+        tickCounter++;
+        if (tickCounter >= 600) {
+            tickCounter = 0;
+            ChatInterceptor.cleanupExpired();
         }
     }
 

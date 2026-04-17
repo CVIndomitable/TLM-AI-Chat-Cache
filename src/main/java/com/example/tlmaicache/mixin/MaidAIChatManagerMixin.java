@@ -1,6 +1,5 @@
 package com.example.tlmaicache.mixin;
 
-import com.example.tlmaicache.TlmAiCache;
 import com.example.tlmaicache.cache.ActionCache;
 import com.example.tlmaicache.cache.CachedAction;
 import com.example.tlmaicache.config.CacheConfig;
@@ -22,26 +21,19 @@ public abstract class MaidAIChatManagerMixin {
     private void tlmcache$onChat(String message, ChatClientInfo clientInfo, ServerPlayer sender, CallbackInfo ci) {
         if (!CacheConfig.ENABLE_CACHE.get()) return;
 
-        if (!(this instanceof MaidAIChatDataAccessor accessor)) {
-            TlmAiCache.LOGGER.error("MaidAIChatManager does not extend MaidAIChatData - cache disabled for this call");
-            return;
-        }
-        EntityMaid maid = accessor.tlmcache$getMaid();
+        EntityMaid maid = ((MaidAIChatManager) (Object) this).getMaid();
 
         String normalized = TextNormalizer.normalize(message);
         if (normalized.isEmpty()) return;
 
         CachedAction cached = ActionCache.getInstance().get(normalized);
         if (cached != null) {
-            // 缓存命中 → 直接执行，跳过 LLM
             if (ChatInterceptor.executeCachedAction(cached, maid, sender)) {
                 ci.cancel();
                 return;
             }
-            // 执行失败则回退到 LLM
         }
 
-        // 缓存未命中 → 记录待查询，让原始方法继续（透传给 LLM）
         ChatInterceptor.recordPendingQuery(maid, normalized, message, sender);
     }
 }

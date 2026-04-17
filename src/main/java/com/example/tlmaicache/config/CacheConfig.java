@@ -1,19 +1,19 @@
 package com.example.tlmaicache.config;
 
-import net.minecraftforge.common.ForgeConfigSpec;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
 public class CacheConfig {
-    public static final ForgeConfigSpec SPEC;
+    public static final ModConfigSpec SPEC;
 
-    public static final ForgeConfigSpec.BooleanValue ENABLE_CACHE;
-    public static final ForgeConfigSpec.BooleanValue REQUIRE_CONFIRMATION;
-    public static final ForgeConfigSpec.BooleanValue OP_ONLY_CONFIRM;
-    public static final ForgeConfigSpec.ConfigValue<String> EXTRA_CN_STOPWORDS;
-    public static final ForgeConfigSpec.ConfigValue<String> EXTRA_EN_STOPWORDS;
-    public static final ForgeConfigSpec.BooleanValue SHOW_CACHE_DEBUG;
+    public static final ModConfigSpec.BooleanValue ENABLE_CACHE;
+    public static final ModConfigSpec.BooleanValue REQUIRE_CONFIRMATION;
+    public static final ModConfigSpec.BooleanValue OP_ONLY_CONFIRM;
+    public static final ModConfigSpec.ConfigValue<String> EXTRA_CN_STOPWORDS;
+    public static final ModConfigSpec.ConfigValue<String> EXTRA_EN_STOPWORDS;
+    public static final ModConfigSpec.BooleanValue SHOW_CACHE_DEBUG;
 
     static {
-        ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
+        ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
 
         builder.push("general");
         ENABLE_CACHE = builder
